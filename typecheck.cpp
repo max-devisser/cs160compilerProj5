@@ -67,7 +67,7 @@ void typeError(TypeErrorCode code) {
 // Not all functions must have code, many may be left empty.
 
 void TypeCheck::visitProgramNode(ProgramNode* node) {
-  // WRITEME: Replace with code if necessary
+  
 }
 
 void TypeCheck::visitClassNode(ClassNode* node) {
