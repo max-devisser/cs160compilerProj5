@@ -483,6 +483,11 @@ void TypeCheck::visitNegationNode(NegationNode* node) {
   }
 }
 
+void updateType(ASTNode* dest, CompoundType src) {
+  dest->basetype = src.baseType;
+  dest->objectClassName = src.objectClassName;
+}
+
 void checkArguments(std::string methodName, MethodTable* methodTable, std::list<ExpressionNode*>* callParamList) {
   int numParams = (callParamList == NULL) ? 0 : callParamList->size();
   std::list<CompoundType>* p = methodTable->at(methodName).parameters;
@@ -497,74 +502,73 @@ void checkArguments(std::string methodName, MethodTable* methodTable, std::list<
       c->baseType = (*callParamIt)->basetype;
       c->objectClassName = (*callParamIt)->objectClassName;
       if (c->baseType != expectedParamIt->baseType || c->objectClassName != expectedParamIt->objectClassName) {
-        
+        // looks like its an error of the objects type not being set, all of the calls for f1 have bools in them
+        std::cout << methodName << ":" << std::endl;
+        std::cout << "Expected: " << expectedParamIt->baseType << "," << expectedParamIt->objectClassName << std::endl;
+        std::cout << "Got: " << c->baseType << "," << c->objectClassName << std::endl;
         typeError(argument_type_mismatch);
       }
       expectedParamIt++;
     }
   }
+}
 
-  
+bool findMethod(std::string methodName, std::string className, ClassTable* classTable, std::list<ExpressionNode*>* callParamList, ASTNode* node) {
+  while(className.compare("") != 0) {
+    if ((*classTable)[className].methods->count(methodName) == 1) {
+      checkArguments(methodName, (*classTable)[className].methods, callParamList);
+      updateType(node, (*classTable)[className].methods->at(methodName).returnType);
+      return true;
+    }
+    className = (*classTable)[className].superClassName;
+  }
+
+  return false;
+}
+
+bool findMember(std::string memberName, std::string className, ClassTable* classTable, MethodCallNode* node) {
+  while(className.compare("")) {
+    if ((*classTable)[className].members->count(memberName)) {
+      updateType(node->identifier_1, (*classTable)[className].members->at(memberName).type);
+      return true;
+    }
+    className = (*classTable)[className].superClassName;
+  }
+
+  return false;
 }
 
 void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   node->visit_children(this);
 
   bool found = false;
+  // no dot operator
   if (node->identifier_2 == NULL) {
-    std::string myMethod = node->identifier_1->name;
-    std::string className = currentClassName;
-    while(className.compare("")) {
-      if ((*classTable)[className].methods->count(myMethod)) {
-        found = true;
-        checkArguments(myMethod, (*classTable)[className].methods, node->expression_list);
-        node->identifier_1->basetype = (*classTable)[className].methods->at(myMethod).returnType.baseType;
-        node->identifier_1->objectClassName = (*classTable)[className].methods->at(myMethod).returnType.objectClassName;
-        break;
-        
-      }
-      className = (*classTable)[className].superClassName;
-    }
+    found = findMethod(node->identifier_1->name, currentClassName, classTable, node->expression_list, node->identifier_1);
+
     if (!found) {
       typeError(undefined_method);
     }
-  } else {
-    if (currentVariableTable->count(node->identifier_1->name)) {
-      found = true;
-      node->identifier_1->basetype = (*currentVariableTable)[node->identifier_1->name].type.baseType;
-      node->identifier_1->objectClassName = (*currentVariableTable)[node->identifier_1->name].type.objectClassName;
-    }
+  } 
+  // yes dot operator
+  else {
+    // find variable to access method through
+    bool foundVar = false;
     std::string className = currentClassName;
-    if (!found) {
-      while(className.compare("")) {
-        if ((*classTable)[className].members->count(node->identifier_1->name)) {
-          found = true;
-          node->identifier_1->basetype = (*classTable)[className].members->at(node->identifier_1->name).type.baseType;
-          node->identifier_1->objectClassName = (*classTable)[className].members->at(node->identifier_1->name).type.objectClassName;
-          break;
-        }
-        className = (*classTable)[className].superClassName;
-      }
+    if (currentVariableTable->count(node->identifier_1->name)) {
+      foundVar = true;
+      updateType(node->identifier_1, (*currentVariableTable)[node->identifier_1->name].type);
+    } else {
+      foundVar = findMember(node->identifier_1->name, className, classTable, node);
     }
 
-    if (found) {
-      found = false;
-      std::string myMethod = node->identifier_2->name;
+    if (foundVar) {
+      // check variable is an object
       if (!classTable->count(node->identifier_1->objectClassName)) {
         typeError(not_object);
       }
 
-      std::string className = node->identifier_1->objectClassName;
-      while(className.compare("")) {
-        if ((*classTable)[className].methods->count(myMethod)) {
-          found = true;
-          checkArguments(myMethod, (*classTable)[className].methods, node->expression_list);
-          node->basetype = (*classTable)[className].methods->at(myMethod).returnType.baseType;
-          node->objectClassName = (*classTable)[className].methods->at(myMethod).returnType.objectClassName;
-          break;
-        }
-        className = (*classTable)[className].superClassName;
-      }
+      found = findMethod(node->identifier_2->name, node->identifier_1->objectClassName, classTable, node->expression_list, node);
       if (!found) {
         typeError(undefined_method);
       }
