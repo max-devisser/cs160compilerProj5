@@ -115,7 +115,7 @@ Parameters2 : Type T_ID
 	;
 
 Body : Declarations Statements Return
-		{ $$ = new MethodBodyNode($1, $2, $3); astRoot = $$; }
+		{ $$ = new MethodBodyNode($1, $2, $3); }
 	;
 
 Declarations : Declarations Declaration
