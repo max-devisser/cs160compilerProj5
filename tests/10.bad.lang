@@ -64,6 +64,7 @@ class0 {
             if f3(75 - 128, local1, -local4) {
                 local0 = member0 or true;
             } else {
+			/* call to f3 messes it up */
                 f0(f1(137, local2 / arg0, f3(68, not (false) or true, arg0 - 241), local4), 104 >= 121, local1, 108, local3);
                 f0(167, true, false, local2, f1(144 - 198, arg0 + local2 - arg0, local1, local2));
                 if false {

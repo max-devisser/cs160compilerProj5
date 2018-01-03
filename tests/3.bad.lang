@@ -76,10 +76,11 @@ class0 {
         integer local3;
         boolean local4;
         integer local5;
-        
+
         if f3(arg3 or local0, 23, false, 85 >= member1, false) {
+		/*stuff messes up here */
             f1(f3(arg3, (-member2), arg0, arg2 * local1 >= 160, local0));
-            local0 = local0 or false and local2;
+	       local0 = local0 or false and local2;
             local1 = 161;
         }
         
